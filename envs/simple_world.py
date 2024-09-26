@@ -34,7 +34,7 @@ class SimpleWorldEnv(gym.Env):
         # # none, left, right, boost
         # self.action_space = spaces.Discrete(4)
 
-        # none, left, right, up, down
+        # left, right, up, down
         self.action_space = spaces.Discrete(5)
 
         assert render_mode is None or render_mode in self.metadata["render_modes"]
@@ -47,8 +47,7 @@ class SimpleWorldEnv(gym.Env):
         self.render_mode = "human"
 
     def _get_obs(self):
-        target = self.size / 2
-        p = self._agent_pos - target
+        p = self._agent_pos - self._target_pos
         v = self._agent_vel
         return {
             "pos": p,
@@ -70,6 +69,8 @@ class SimpleWorldEnv(gym.Env):
         if self.np_random.random() > 0.5:
             self._agent_pos[1] = self.size - self._agent_pos[1]
 
+        self._target_pos = self.np_random.uniform(50, self.size - 50, size=(2,))
+
         self._agent_theta = self.np_random.random() * np.pi * 2
         vel_mag = 0.5
         self._agent_vel = (
@@ -81,6 +82,7 @@ class SimpleWorldEnv(gym.Env):
             )
             * vel_mag
         )
+        self.timestep = 0
 
         if self.render_mode == "human":
             self._render_frame()
@@ -88,6 +90,7 @@ class SimpleWorldEnv(gym.Env):
         return self._get_obs(), self._get_info()
 
     def step(self, action):
+        self.timestep += 1
         # Map the action (element of {0,1,2,3}) to the direction we walk in
         # is_boost = False
         # turn_strength = np.pi / 100
@@ -99,13 +102,13 @@ class SimpleWorldEnv(gym.Env):
         #     is_boost = True
 
         dir = [0, 0]
-        if action == 1:
+        if action == 0:
             dir = [1, 0]
-        elif action == 2:
+        elif action == 1:
             dir = [-1, 0]
-        elif action == 3:
+        elif action == 2:
             dir = [0, 1]
-        elif action == 4:
+        elif action == 3:
             dir = [0, -1]
         dir = np.array(dir)
         accel_mag = 0.5
@@ -126,12 +129,12 @@ class SimpleWorldEnv(gym.Env):
         self._agent_pos = np.clip(self._agent_pos + self._agent_vel, 10, self.size - 10)
         target = self.size / 2
         d = np.sqrt(
-            (self._agent_pos[0] - target) ** 2 + (self._agent_pos[1] - target) ** 2
+            (self._agent_pos[0] - self._target_pos[0]) ** 2
+            + (self._agent_pos[1] - self._target_pos[1]) ** 2
         )
         terminated = d < self.win_distance
-        reward = 1 if terminated else 0
-        reward += (self.size - d) / self.size
-        # reward = reward * reward
+        reward = 100 if terminated else 0
+        reward += (np.sqrt((self.size**2) * 2) - d) / self.size
 
         if self.render_mode == "human":
             self._render_frame()
@@ -160,7 +163,7 @@ class SimpleWorldEnv(gym.Env):
         pygame.draw.rect(
             canvas,
             (255, 0, 0),
-            (int(self.window_size / 2), self.window_size / 2, square_size, square_size),
+            (int(self._target_pos[0]), self._target_pos[1], square_size, square_size),
         )
         pygame.draw.rect(
             canvas,
