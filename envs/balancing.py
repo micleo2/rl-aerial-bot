@@ -13,7 +13,7 @@ def limit_norm(vector, max_norm):
         return vector
 
 
-class SimpleWorldEnv(gym.Env):
+class BalancingEnv(gym.Env):
     metadata = {"render_modes": ["human", "rgb_array"], "render_fps": 60}
 
     def __init__(self, render_mode=None, size=5):
@@ -31,6 +31,9 @@ class SimpleWorldEnv(gym.Env):
             }
         )
 
+        # # none, left, right, boost
+        # self.action_space = spaces.Discrete(4)
+
         # left, right, up, down
         self.action_space = spaces.Discrete(5)
 
@@ -46,7 +49,11 @@ class SimpleWorldEnv(gym.Env):
     def _get_obs(self):
         p = self._agent_pos - self._target_pos
         v = self._agent_vel
-        return {"pos": p, "vel": v}
+        return {
+            "pos": p,
+            "vel": v,
+            # "theta": t,
+        }
 
     def _get_info(self):
         return {}
@@ -84,6 +91,16 @@ class SimpleWorldEnv(gym.Env):
 
     def step(self, action):
         self.timestep += 1
+        # Map the action (element of {0,1,2,3}) to the direction we walk in
+        # is_boost = False
+        # turn_strength = np.pi / 100
+        # if action == 1:
+        #     self._agent_theta += turn_strength
+        # elif action == 2:
+        #     self._agent_theta -= turn_strength
+        # elif action == 3:
+        #     is_boost = True
+
         dir = [0, 0]
         if action == 0:
             dir = [1, 0]
@@ -96,15 +113,31 @@ class SimpleWorldEnv(gym.Env):
         dir = np.array(dir)
         accel_mag = 0.5
         self._agent_vel = limit_norm(self._agent_vel + dir * accel_mag, self.max_vel)
+
+        # tpi = np.pi * 2
+        # self._agent_theta %= tpi
+        # if self._agent_theta < 0:
+        #     self.theta = tpi + self._agent_theta
+        # accel_mag = 1
+        # accel = (
+        #     np.array([np.cos(self._agent_theta), np.sin(self._agent_theta)])
+        #     * is_boost
+        #     * accel_mag
+        # )
+
+        # self._agent_vel = limit_norm(self._agent_vel + accel, self.max_vel)
         prev_dist = np.linalg.norm(self._agent_pos - self._target_pos)
         self._agent_pos = np.clip(self._agent_pos + self._agent_vel, 10, self.size - 10)
-
         cur_dist = np.linalg.norm(self._agent_pos - self._target_pos)
+        target = self.size / 2
         terminated = cur_dist < self.win_distance
         reached_reward = 200 if terminated else 0
+        # reached_reward = ((600 - self.timestep) / 10) ** 2 + 200 if terminated else 0
+        # dist_reward = (np.sqrt((self.size**2) * 2) - d) / self.size
         dist_reward = (prev_dist - cur_dist) / 20
         if self.render_mode == "human":
             print(f"reached_reward={reached_reward}\tdist_reward={dist_reward}")
+        # reward -= self.timestep / 600
         reward = reached_reward + dist_reward
 
         if self.render_mode == "human":
