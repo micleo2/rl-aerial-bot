@@ -126,16 +126,19 @@ class SimpleWorldEnv(gym.Env):
         # )
 
         # self._agent_vel = limit_norm(self._agent_vel + accel, self.max_vel)
+        prev_dist = np.linalg.norm(self._agent_pos - self._target_pos)
         self._agent_pos = np.clip(self._agent_pos + self._agent_vel, 10, self.size - 10)
+        cur_dist = np.linalg.norm(self._agent_pos - self._target_pos)
         target = self.size / 2
-        d = np.sqrt(
-            (self._agent_pos[0] - self._target_pos[0]) ** 2
-            + (self._agent_pos[1] - self._target_pos[1]) ** 2
-        )
-        terminated = d < self.win_distance
-        reward = 100 if terminated else 0
-        reward += (np.sqrt((self.size**2) * 2) - d) / self.size
-        reward -= self.timestep / 600
+        terminated = cur_dist < self.win_distance
+        reached_reward = 200 if terminated else 0
+        # reached_reward = ((600 - self.timestep) / 10) ** 2 + 100 if terminated else 0
+        # dist_reward = (np.sqrt((self.size**2) * 2) - d) / self.size
+        dist_reward = (prev_dist - cur_dist) / 20
+        if self.render_mode == "human":
+            print(f"reached_reward={reached_reward}\tdist_reward={dist_reward}")
+        # reward -= self.timestep / 600
+        reward = reached_reward + dist_reward
 
         if self.render_mode == "human":
             self._render_frame()
