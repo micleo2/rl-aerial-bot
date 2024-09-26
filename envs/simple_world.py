@@ -135,6 +135,7 @@ class SimpleWorldEnv(gym.Env):
         terminated = d < self.win_distance
         reward = 100 if terminated else 0
         reward += (np.sqrt((self.size**2) * 2) - d) / self.size
+        reward -= self.timestep / 600
 
         if self.render_mode == "human":
             self._render_frame()
