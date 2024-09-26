@@ -11,5 +11,5 @@ register(
 register(
     id="envs/SimpleWorld-v0",
     entry_point="envs:SimpleWorldEnv",
-    max_episode_steps=300,
+    max_episode_steps=600,
 )

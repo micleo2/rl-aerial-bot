@@ -3,14 +3,14 @@ import gymnasium as gym
 from stable_baselines3 import PPO
 import envs
 
-env = gym.make("envs/SimpleWorld-v0", render_mode="human")
-# env = gym.make("envs/SimpleWorld-v0")
+# env = gym.make("envs/SimpleWorld-v0", render_mode="human")
+env = gym.make("envs/SimpleWorld-v0")
 
 # model = PPO("MlpPolicy", env, verbose=1)
 model = PPO("MultiInputPolicy", env, verbose=1)
 
 print("starting learning")
-model.learn(total_timesteps=300_000)
+model.learn(total_timesteps=200_000)
 print("finished learning")
 
 env.toggle_on_vis()

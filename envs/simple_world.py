@@ -35,7 +35,7 @@ class SimpleWorldEnv(gym.Env):
         # self.action_space = spaces.Discrete(4)
 
         # none, left, right, up, down
-        self.action_space = spaces.Discrete(4)
+        self.action_space = spaces.Discrete(5)
 
         assert render_mode is None or render_mode in self.metadata["render_modes"]
         self.render_mode = render_mode
@@ -59,7 +59,6 @@ class SimpleWorldEnv(gym.Env):
         return {}
 
     def reset(self, seed=None, options=None):
-        print(f"reset")
         # We need the following line to seed self.np_random
         super().reset(seed=seed)
 
@@ -128,7 +127,7 @@ class SimpleWorldEnv(gym.Env):
         )
         terminated = d < self.win_distance
         reward = 1 if terminated else 0
-        # reward += (self.size - d) / self.size
+        reward += (self.size - d) / self.size
         # reward = reward * reward
 
         if self.render_mode == "human":
