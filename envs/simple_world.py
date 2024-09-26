@@ -25,9 +25,9 @@ class SimpleWorldEnv(gym.Env):
         self.observation_space = spaces.Dict(
             {
                 "pos": spaces.Box(0, self.size, shape=(2,), dtype=np.float64),
-                # "vel": spaces.Box(
-                #     -self.max_vel, self.max_vel, shape=(2,), dtype=np.float64
-                # )
+                "vel": spaces.Box(
+                    -self.max_vel, self.max_vel, shape=(2,), dtype=np.float64
+                ),
             }
         )
 
@@ -49,9 +49,10 @@ class SimpleWorldEnv(gym.Env):
     def _get_obs(self):
         target = self.size / 2
         p = self._agent_pos - target
+        v = self._agent_vel
         return {
             "pos": p,
-            # "vel": v,
+            "vel": v,
             # "theta": t,
         }
 
@@ -69,17 +70,17 @@ class SimpleWorldEnv(gym.Env):
         if self.np_random.random() > 0.5:
             self._agent_pos[1] = self.size - self._agent_pos[1]
 
-        # self._agent_theta = self.np_random.random() * np.pi * 2
-        # vel_mag = 0.5
-        # self._agent_vel = (
-        #     np.array(
-        #         [
-        #             np.cos(self._agent_theta),
-        #             np.sin(self._agent_theta),
-        #         ]
-        #     )
-        #     * vel_mag
-        # )
+        self._agent_theta = self.np_random.random() * np.pi * 2
+        vel_mag = 0.5
+        self._agent_vel = (
+            np.array(
+                [
+                    np.cos(self._agent_theta),
+                    np.sin(self._agent_theta),
+                ]
+            )
+            * vel_mag
+        )
 
         if self.render_mode == "human":
             self._render_frame()
@@ -97,16 +98,18 @@ class SimpleWorldEnv(gym.Env):
         # elif action == 3:
         #     is_boost = True
 
-        vel = [0, 0]
+        dir = [0, 0]
         if action == 1:
-            vel = [1, 0]
+            dir = [1, 0]
         elif action == 2:
-            vel = [-1, 0]
+            dir = [-1, 0]
         elif action == 3:
-            vel = [0, 1]
+            dir = [0, 1]
         elif action == 4:
-            vel = [0, -1]
-        self._agent_vel = np.array(vel)
+            dir = [0, -1]
+        dir = np.array(dir)
+        accel_mag = 0.5
+        self._agent_vel = limit_norm(self._agent_vel + dir * accel_mag, self.max_vel)
 
         # tpi = np.pi * 2
         # self._agent_theta %= tpi
