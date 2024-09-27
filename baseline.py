@@ -17,7 +17,7 @@ env = gym.make("envs/Balancing-v0")
 model = PPO("MultiInputPolicy", env, verbose=1)
 
 print("starting learning")
-model.learn(total_timesteps=450_000)
+model.learn(total_timesteps=500_000)
 print("finished learning")
 
 env.toggle_on_vis()

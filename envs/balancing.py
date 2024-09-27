@@ -37,9 +37,8 @@ class BalancingEnv(gym.Env):
             }
         )
 
-        # none, left, right, boost
-        # self.action_space = spaces.Discrete(4)
-        self.action_space = spaces.Discrete(2)
+        # left, right, boost
+        self.action_space = spaces.Discrete(3)
 
         assert render_mode is None or render_mode in self.metadata["render_modes"]
         self.render_mode = render_mode
@@ -51,7 +50,7 @@ class BalancingEnv(gym.Env):
         self.render_mode = "human"
 
     def _get_obs(self):
-        p = self._agent_pos
+        p = self._agent_pos - self._target_pos
         v = self._agent_vel
         t = np.array([self._agent_theta])
         return {
@@ -74,13 +73,13 @@ class BalancingEnv(gym.Env):
         if self.np_random.random() > 0.5:
             self._agent_pos[1] = self.size - self._agent_pos[1]
 
+        # self._target_pos = self.np_random.uniform(50, self.size - 50, size=(2,))
         self._target_pos = self.np_random.uniform(50, self.size - 50, size=(2,))
         self._agent_pos = np.array([self.size / 2, self.size / 2])
 
-        # self._agent_theta = self.np_random.random() * np.pi * 2
-        self._agent_theta = -np.pi / 2
-        rn = np.pi / 10
-        self._agent_theta += self.np_random.uniform(-rn, rn)
+        wiggle_range = np.pi / 10
+        wiggle = self.np_random.uniform(-wiggle_range, wiggle_range)
+        self._agent_theta = -np.pi / 2 + wiggle
         # vel_mag = 0.5
         vel_mag = 0
         self._agent_vel = (
@@ -104,28 +103,33 @@ class BalancingEnv(gym.Env):
         # none, left, right, boost
         is_boost = False
         turn_strength = np.pi / 60
-        if action == 1:
+        if action == 0:
             is_boost = True
-        # if action == 1:
-        #     self._agent_theta += turn_strength
-        # elif action == 2:
-        #     self._agent_theta -= turn_strength
-        # elif action == 3:
-        #     is_boost = True
+        elif action == 1:
+            self._agent_theta += turn_strength
+        elif action == 2:
+            self._agent_theta -= turn_strength
 
-        self._agent_theta = -np.pi / 2
         accel = (
             np.array([np.cos(self._agent_theta), np.sin(self._agent_theta)])
             * is_boost
             * self.boost_accel
         )
         accel[1] += self.gravity
-
+        prev_speed = np.linalg.norm(self._agent_vel)
         self._agent_vel = limit_norm(self._agent_vel + accel, self.max_vel)
+        cur_speed = np.linalg.norm(self._agent_vel)
+        prev_dist = np.linalg.norm(self._agent_pos - self._target_pos)
         self._agent_pos += self._agent_vel
-        reward = (self.max_vel - np.linalg.norm(self._agent_vel)) ** 2
+        cur_dist = np.linalg.norm(self._agent_pos - self._target_pos)
+        reached = cur_dist < self.win_distance
 
-        terminated = False
+        dist_reward = (prev_dist - cur_dist) / 20
+        speed_reward = prev_speed - cur_speed
+        reached_reward = 300 if reached else 0
+        reward = speed_reward
+
+        terminated = reached
         if self._agent_pos[0] < 0 or self._agent_pos[0] >= self.size - 1:
             terminated = True
         if self._agent_pos[1] < 0 or self._agent_pos[1] >= self.size - 1:
@@ -155,12 +159,12 @@ class BalancingEnv(gym.Env):
 
         square_size = 10
 
-        # # target
-        # pygame.draw.rect(
-        #     canvas,
-        #     (255, 0, 0),
-        #     (int(self._target_pos[0]), self._target_pos[1], square_size, square_size),
-        # )
+        # target
+        pygame.draw.rect(
+            canvas,
+            (255, 0, 0),
+            (int(self._target_pos[0]), self._target_pos[1], square_size, square_size),
+        )
 
         # agent
         pygame.draw.rect(
