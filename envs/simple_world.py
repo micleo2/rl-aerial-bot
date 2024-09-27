@@ -14,6 +14,19 @@ def limit_norm(vector, max_norm):
 
 
 class SimpleWorldEnv(gym.Env):
+    """
+    ## Observation Space
+
+    The observation is a `ndarray` with shape `(4,)` with the values corresponding to the following positions and velocities:
+
+    | Num | Observation           | Min                 | Max               |
+    |-----|-----------------------|---------------------|-------------------|
+    | 0   | Position-x            | 0                   | window_size       |
+    | 1   | Position-y            | 0                   | window_size       |
+    | 2   | Velocity-x            | -max_vel            | max_vel           |
+    | 3   | Velocity-y            | -max_vel            | max_vel           |
+
+    """
     metadata = {"render_modes": ["human", "rgb_array"], "render_fps": 60}
 
     def __init__(self, render_mode=None, size=5):
@@ -22,14 +35,10 @@ class SimpleWorldEnv(gym.Env):
         self.win_distance = 10
         self.max_vel = 20
 
-        self.observation_space = spaces.Dict(
-            {
-                "pos": spaces.Box(0, self.size, shape=(2,), dtype=np.float64),
-                "vel": spaces.Box(
-                    -self.max_vel, self.max_vel, shape=(2,), dtype=np.float64
-                ),
-            }
-        )
+        lows = np.array([0, 0, -self.max_vel, -self.max_vel])
+        highs = np.array([self.size, self.size, self.max_vel, self.max_vel])
+
+        self.observation_space = spaces.Box(lows, highs, dtype=np.float64)
 
         # left, right, up, down
         self.action_space = spaces.Discrete(5)
@@ -46,7 +55,7 @@ class SimpleWorldEnv(gym.Env):
     def _get_obs(self):
         p = self._agent_pos - self._target_pos
         v = self._agent_vel
-        return {"pos": p, "vel": v}
+        return np.array([p[0], p[1], v[0], v[1]])
 
     def _get_info(self):
         return {}

@@ -27,6 +27,7 @@ class BalancingEnv(gym.Env):
 
         self.observation_space = spaces.Dict(
             {
+                "time": spaces.Box(0, 600, shape=(1,), dtype=int),
                 "pos": spaces.Box(0, self.size, shape=(2,), dtype=np.float64),
                 "vel": spaces.Box(
                     -self.max_vel, self.max_vel, shape=(2,), dtype=np.float64
@@ -37,8 +38,7 @@ class BalancingEnv(gym.Env):
             }
         )
 
-        # left, right, boost
-        self.action_space = spaces.Discrete(3)
+        self.action_space = spaces.Discrete(4)
 
         assert render_mode is None or render_mode in self.metadata["render_modes"]
         self.render_mode = render_mode
@@ -50,10 +50,12 @@ class BalancingEnv(gym.Env):
         self.render_mode = "human"
 
     def _get_obs(self):
+        tm = np.array([self.timestep])
         p = self._agent_pos - self._target_pos
         v = self._agent_vel
         t = np.array([self._agent_theta])
         return {
+            "time": tm,
             "pos": p,
             "vel": v,
             "theta": t,
@@ -100,14 +102,13 @@ class BalancingEnv(gym.Env):
 
     def step(self, action):
         self.timestep += 1
-        # none, left, right, boost
         is_boost = False
-        turn_strength = np.pi / 60
-        if action == 0:
+        turn_strength = np.pi / 30
+        if action == 1:
             is_boost = True
-        elif action == 1:
-            self._agent_theta += turn_strength
         elif action == 2:
+            self._agent_theta += turn_strength
+        elif action == 3:
             self._agent_theta -= turn_strength
 
         accel = (
@@ -116,24 +117,32 @@ class BalancingEnv(gym.Env):
             * self.boost_accel
         )
         accel[1] += self.gravity
-        prev_speed = np.linalg.norm(self._agent_vel)
         self._agent_vel = limit_norm(self._agent_vel + accel, self.max_vel)
-        cur_speed = np.linalg.norm(self._agent_vel)
         prev_dist = np.linalg.norm(self._agent_pos - self._target_pos)
         self._agent_pos += self._agent_vel
         cur_dist = np.linalg.norm(self._agent_pos - self._target_pos)
         reached = cur_dist < self.win_distance
 
-        dist_reward = (prev_dist - cur_dist) / 20
-        speed_reward = prev_speed - cur_speed
+        # dist_reward = (prev_dist - cur_dist) / 20
+        dist_reward = 1 if cur_dist < prev_dist else 0
         reached_reward = 300 if reached else 0
-        reward = speed_reward
+        reward = dist_reward + reached_reward
 
         terminated = reached
         if self._agent_pos[0] < 0 or self._agent_pos[0] >= self.size - 1:
             terminated = True
+            reached -= 500
         if self._agent_pos[1] < 0 or self._agent_pos[1] >= self.size - 1:
             terminated = True
+            reached -= 500
+        # if self._agent_pos[0] < 0:
+        #     self._agent_pos[0] = self.size - 10
+        # elif self._agent_pos[0] > self.size:
+        #     self._agent_pos[0] = 10
+        # if self._agent_pos[1] < 0:
+        #     self._agent_pos[1] = self.size - 10
+        # if self._agent_pos[1] > self.size:
+        #     self._agent_pos[1] = 10
 
         if self.render_mode == "human":
             self._render_frame()
