@@ -7,22 +7,24 @@ from sb3_contrib import RecurrentPPO
 from stable_baselines3 import PPO, DQN, A2C
 import envs
 
-# env = gym.make("envs/Balancing-v0", render_mode="human")
-env = gym.make("envs/SimpleWorld-v0")
+# env_name = "CartPole-v1"
+env_name = "envs/Balancing-v0"
+env = gym.make(env_name)
 
 # if True:
-#     mapping = {(pygame.K_LEFT,): 1, (pygame.K_RIGHT,): 2, (pygame.K_SPACE,): 3}
+#     mapping = {(pygame.K_LEFT,): 2, (pygame.K_RIGHT,): 3, (pygame.K_SPACE,): 1}
 #     env = gym.make("envs/Balancing-v0", render_mode="rgb_array")
 #     play(env, keys_to_action=mapping)
 #     exit()
 
-model = PPO("MlpPolicy", env, verbose=1)
+policy_kwargs = dict(net_arch=dict(pi=[128, 128], vf=[128, 128]))
+model = PPO("MlpPolicy", env, policy_kwargs=policy_kwargs, verbose=1)
 
 print("starting learning")
-model.learn(total_timesteps=200_000)
+model.learn(total_timesteps=1_000_000)
 print("finished learning")
 
-env.toggle_on_vis()
+model.set_env(gym.make(env_name, render_mode="human"))
 vec_env = model.get_env()
 
 obs = vec_env.reset()

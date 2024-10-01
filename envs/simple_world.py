@@ -27,6 +27,7 @@ class SimpleWorldEnv(gym.Env):
     | 3   | Velocity-y            | -max_vel            | max_vel           |
 
     """
+
     metadata = {"render_modes": ["human", "rgb_array"], "render_fps": 60}
 
     def __init__(self, render_mode=None, size=5):

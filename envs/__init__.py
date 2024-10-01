@@ -18,5 +18,5 @@ register(
 register(
     id="envs/Balancing-v0",
     entry_point="envs:BalancingEnv",
-    max_episode_steps=600,
+    max_episode_steps=1200,
 )
