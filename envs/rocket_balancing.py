@@ -13,7 +13,7 @@ def limit_norm(vector, max_norm):
         return vector
 
 
-class BalancingEnv(gym.Env):
+class RocketBalancingEnv(gym.Env):
     """
     ## Observation Space
 
@@ -21,14 +21,12 @@ class BalancingEnv(gym.Env):
 
     | Num | Observation           | Min                 | Max               |
     |-----|-----------------------|---------------------|-------------------|
-    | 0   | T1-Rel-x              | -window_size        | window_size       |
-    | 1   | T1-Rel-y              | -window_size        | window_size       |
-    | 2   | T2-Rel-x              | -window_size        | window_size       |
-    | 3   | T2-Rel-y              | -window_size        | window_size       |
-    | 4   | Velocity-x            | -max_vel            | max_vel           |
-    | 5   | Velocity-y            | -max_vel            | max_vel           |
-    | 6   | Heading-x             | -1                  | 1                 |
-    | 7   | Heading-y             | -1                  | 1                 |
+    | 0   | Pos-x                 | 0                   | window_size       |
+    | 1   | Pos-y                 | 0                   | window_size       |
+    | 2   | Velocity-x            | -max_vel            | max_vel           |
+    | 3   | Velocity-y            | -max_vel            | max_vel           |
+    | 4   | Heading-x             | -1                  | 1                 |
+    | 5   | Heading-y             | -1                  | 1                 |
 
     """
 
@@ -46,10 +44,8 @@ class BalancingEnv(gym.Env):
         self.action_space = spaces.Discrete(4)
         lows = np.array(
             [
-                -self.size,
-                -self.size,
-                -self.size,
-                -self.size,
+                0,
+                0,
                 -self.max_vel,
                 -self.max_vel,
                 -1,
@@ -58,8 +54,6 @@ class BalancingEnv(gym.Env):
         )
         highs = np.array(
             [
-                self.size,
-                self.size,
                 self.size,
                 self.size,
                 self.max_vel,
@@ -80,13 +74,12 @@ class BalancingEnv(gym.Env):
         self.render_mode = "human"
 
     def _get_obs(self):
-        t1 = self._agent_pos - self._t1_pos
-        t2 = self._agent_pos - self._t2_pos
+        p = self._agent_pos
         v = self._agent_vel
         hx = np.cos(self._agent_theta)
         hy = np.sin(self._agent_theta)
         return np.array(
-            [t1[0], t1[1], t2[0], t2[0], v[0], v[1], hx, hy], dtype=np.float32
+            [p[0], p[1], v[0], v[1], hx, hy], dtype=np.float32
         )
 
     def _get_info(self):
@@ -103,9 +96,6 @@ class BalancingEnv(gym.Env):
         if self.np_random.random() > 0.5:
             self._agent_pos[1] = self.size - self._agent_pos[1]
 
-        # self._t1_pos = self.np_random.uniform(50, self.size - 50, size=(2,))
-        self._t1_pos = self.np_random.uniform(50, self.size - 50, size=(2,))
-        self._t2_pos = self.np_random.uniform(50, self.size - 50, size=(2,))
         self._agent_pos = np.array([self.size / 2, self.size / 2])
 
         wiggle_range = np.pi / 10
@@ -148,19 +138,17 @@ class BalancingEnv(gym.Env):
             * self.boost_accel
         )
         accel[1] += self.gravity
-        # prev_speed = np.linalg.norm(self._agent_vel)
+        prev_speed = np.linalg.norm(self._agent_vel)
         self._agent_vel = limit_norm(self._agent_vel + accel, self.max_vel)
-        # cur_speed = np.linalg.norm(self._agent_vel)
-        prev_dist = np.linalg.norm(self._agent_pos - self._t1_pos)
+        cur_speed = np.linalg.norm(self._agent_vel)
         self._agent_pos += self._agent_vel
-        cur_dist = np.linalg.norm(self._agent_pos - self._t1_pos)
-        reached = cur_dist < self.win_distance
 
-        # dist_reward = (prev_dist - cur_dist) / 20
-        dist_reward = 1 if cur_dist < prev_dist else -2
-        reached_reward = 2000 if reached else 0
-        # speed_reward = prev_speed - cur_speed
-        reward = dist_reward + reached_reward
+        speed_reward = -2
+        if cur_speed < prev_speed:
+            speed_reward = 1
+        if cur_speed < 0.01:
+            speed_reward = 1000
+        reward = speed_reward
 
         terminated = False
         if self._agent_pos[0] < 0 or self._agent_pos[0] >= self.size - 1:
@@ -170,10 +158,6 @@ class BalancingEnv(gym.Env):
 
         if self.render_mode == "human":
             self._render_frame()
-
-        if reached:
-            self._t1_pos = self._t2_pos
-            self._t2_pos = self.np_random.uniform(50, self.size - 50, size=(2,))
 
         obs = self._get_obs()
         info = self._get_info()
@@ -195,19 +179,6 @@ class BalancingEnv(gym.Env):
         canvas.fill((255, 255, 255))
 
         square_size = 10
-
-        # T1
-        pygame.draw.rect(
-            canvas,
-            (255, 0, 0),
-            (int(self._t1_pos[0]), self._t1_pos[1], square_size, square_size),
-        )
-        # T2
-        pygame.draw.rect(
-            canvas,
-            (255, 150, 0),
-            (int(self._t2_pos[0]), self._t2_pos[1], square_size, square_size),
-        )
 
         # agent
         pygame.draw.rect(

@@ -3,12 +3,13 @@ import numpy as np
 import gymnasium as gym
 import pygame
 from gymnasium.utils.play import play
-from sb3_contrib import RecurrentPPO
-from stable_baselines3 import PPO, DQN, A2C
+
+# from stable_baselines3 import PPO, DQN, A2C
+from sbx import DDPG, DQN, PPO, SAC, TD3, TQC, CrossQ
 import envs
 
 # env_name = "CartPole-v1"
-env_name = "envs/Balancing-v0"
+env_name = "envs/RocketWaypoints-v0"
 env = gym.make(env_name)
 
 # if True:
@@ -17,11 +18,12 @@ env = gym.make(env_name)
 #     play(env, keys_to_action=mapping)
 #     exit()
 
-policy_kwargs = dict(net_arch=dict(pi=[128, 128], vf=[128, 128]))
-model = PPO("MlpPolicy", env, policy_kwargs=policy_kwargs, verbose=1)
+# policy_kwargs = dict(net_arch=dict(pi=[128, 128], vf=[128, 128]))
+policy_kwargs = dict(net_arch=dict(pi=[64, 64], vf=[64, 64]))
+model = PPO("MlpPolicy", env, policy_kwargs=policy_kwargs, verbose=1, device="cpu", ent_coef=0.01)
 
 print("starting learning")
-model.learn(total_timesteps=1_000_000)
+model.learn(total_timesteps=2_000_000)
 print("finished learning")
 
 model.set_env(gym.make(env_name, render_mode="human"))
